@@ -1,4 +1,3 @@
-#! /usr/bin/env julia
 
 mutable struct PopObj
     ind::Array{String,1}
@@ -23,16 +22,23 @@ function readgenepop(infile::String; ploidy::Int64 = 2)
             d[ last(indnames) ] = split( strip(gpop[i][j]), r"\s|\t" )[2:end] |> Array{String,1}
        end
     end
-    return PopObj(indnames,
-                  popid,
-                  locinames,
-                  ploidy,
-                  d,
-                  fill( 0, length(indnames) ),
-                  fill( 0, length(indnames) )
-                  )
+    ## print some basic information ##
+    println( "Input File : ", infile )
+    println( "Number of Individuals : ", length(indnames) )
+    println( "Number of Loci : ", length(locinames) )
+    println( "Number of Populations : ", maximum(popid) )
+    println( "\t", "Pop | #Inds " )
+    println( "\t", "----------- " )
+    popcounts = hcat(unique(popid),[sum(popid .== i) for i in unique(popid)])
+    for eachpop in 1:length(popcounts)÷2
+        println("\t", popcounts[eachpop], "   |   ", popcounts[eachpop,2])
+    end
+    PopObj(indnames,
+          popid,
+          locinames,
+          ploidy,
+          d,
+          fill( 0, length(indnames) ),
+          fill( 0, length(indnames) )
+          ) ;
 end
-
-#=  TESTING
-@time test = readgenepop("test.gen", ploidy = 2)
-=#
