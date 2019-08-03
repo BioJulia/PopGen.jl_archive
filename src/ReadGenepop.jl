@@ -1,68 +1,32 @@
-## create struct for individuals
-
-mutable struct GenoInd
-    name::String
-    genotypes::Array{Array{String,1},1}
-    popid::Union{Int64,String}
-    locx::Union{Int64,Float64}
-    locy::Union{Int64,Float64}
-end
-
-# create struct for entire object. Similar-ish to a genind from R
-mutable struct GenoLite
-    indiv::Dict
+mutable struct PopObj
+    ind::Array{String,1}
+    popid::Array{Union{Int64,String},1}
     loci::Array{String,1}
     ploidy::Int64
-    #other::Type{Any}
+    genos::Dict
+    xloc::Array{Union{Int64,Float64},1}
+    yloc::Array{Union{Int64,Float64},1}
 end
 
 function readgenepop(infile::String, ploidy::Int64 = 2)
-    seq = open(readlines,infile);
+    gpop = split(open(readlines,infile)[2:end],"POP");
     d = Dict()
-    locnames = Array{String,1}()
-    popid = 0
-    i = 2
-    while uppercase(seq[i]) != "POP"
-        push!(locnames,seq[i])
-        i += 1
+    locinames = gpop[1]
+    popid = []
+    indnames = []
+    for i in 2:length(gpop)
+        append!(popid, fill(i-1,length(gpop[i])))
+        for j in 1:length(gpop[i])
+            push!(indnames, split( gpop[i][j], r"\,|\t")[1] )
+            d[ indnames[j] ] = split( strip(gpop[i][j]), r"\s|\t" )[2:end] |> Array{String,1}
+       end
     end
-    while i <= length(seq)
-        if uppercase(seq[i]) == "POP"
-            popid += 1
-            i += 1
-        else
-            tmparray = []
-            genoarray = split(seq[i],"\t")[2:end-1]
-            genodigits = length(genoarray[1]) ÷ ploidy
-            #strip all commas from infile earlier to avoid this
-            indname = split(seq[i],",")[1]
-            for locus in 1:length(genoarray)
-                push!(tmparray,[String(genoarray[locus][1:genodigits]),String(genoarray[locus][genodigits+1:end])])
-            end
-            #push!(d,GenoInd(indname,tmparray, popid, 0, 0))
-            d[indname] = GenoInd(indname,tmparray, popid, 0, 0)
-            i += 1
-            if i > length(seq)
-                return GenoLite(d,locnames,ploidy)
-            end
-        end
-    end
+    return PopObj(indnames,
+                  popid,
+                  locinames,
+                  ploidy,
+                  d,
+                  fill( 0, length(indnames) ),
+                  fill( 0, length(indnames) )
+                  )
 end
-
-# usage: variablename = readgenepop("infile", 2)
-
-# basic function to see indiv names
-function names(data::GenoLite)
-    keys(data.indiv) |> collect |> sort
-end
-
-# basic function to view indiv name along with their population ID
-function popid(data::GenoLite)
-    for i in keys(data.indiv)
-        # maybe makes more sense to output a tuple? Array{Array{Any,1}}?
-        println(data.indiv[i].name, "  ", data.indiv[i].popid)
-    end
-end
-
-# must create another function to edit popID
-# a find [key] replace-like function?
