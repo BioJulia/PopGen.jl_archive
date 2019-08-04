@@ -1,13 +1,3 @@
-mutable struct PopObj
-    ind::Array{String,1}
-    popid::Array{Union{Int64,String},1}
-    loci::Array{String,1}
-    ploidy::Int64
-    genos::Dict
-    xloc::Array{Union{Int64,Float64},1}
-    yloc::Array{Union{Int64,Float64},1}
-end
-
 function loadgenepop(infile::String; ploidy::Int64 = 2, numpop::Int64)
     gpop = split(open(readlines,infile)[2:end], "POP")
     if length(gpop)-1 != numpop
@@ -23,6 +13,41 @@ function loadgenepop(infile::String; ploidy::Int64 = 2, numpop::Int64)
             push!(indnames, split( strip(gpop[i][j]), r"\,|\t")[1] )
             d[ last(indnames) ] = split( strip(gpop[i][j]), r"\s|\t" )[2:end] |> Array{String,1}
        end
+    end
+    ## print some basic information ##
+    println("\n", "Input File : ", joinpath(@__DIR__, infile) )
+    println( "Number of Individuals : ", length(indnames) )
+    println( "Number of Loci : ", length(locinames) )
+    println( "Number of Populations : ", maximum(popid) )
+    println( "\t", "Pop | #Inds " )
+    println( "\t", "----------- " )
+    popcounts = hcat(unique(popid),[sum(popid .== i) for i in unique(popid)])
+    for eachpop in 1:length(popcounts)÷2
+        println("\t", popcounts[eachpop], "   |   ", popcounts[eachpop,2])
+    end
+    println()
+    PopObj(indnames,
+          popid,
+          locinames,
+          ploidy,
+          d,
+          fill( 0, length(indnames) ),
+          fill( 0, length(indnames) )
+          ) ;
+end
+
+# load in CSV files
+function loadcsv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
+    gpop = open(readlines,infile)
+    locinames = split(gpop[1], delim)
+    popid = []
+    indnames = []
+    d = Dict()
+    for i in gpop[2:end]
+        tmp = split(i, delim) |> Array{String,1}
+        d[tmp[1]] = tmp[3:end]
+        push!(indnames, tmp[1])
+        push!(popid, parse(Int64,tmp[2]))
     end
     ## print some basic information ##
     println("\n", "Input File : ", joinpath(@__DIR__, infile) )
