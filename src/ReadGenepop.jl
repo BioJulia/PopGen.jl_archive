@@ -1,4 +1,3 @@
-
 mutable struct PopObj
     ind::Array{String,1}
     popid::Array{Union{Int64,String},1}
@@ -9,8 +8,11 @@ mutable struct PopObj
     yloc::Array{Union{Int64,Float64},1}
 end
 
-function readgenepop(infile::String; ploidy::Int64 = 2)
+function loadgenepop(infile::String; ploidy::Int64 = 2, numpop::Int64)
     gpop = split(open(readlines,infile)[2:end], "POP")
+    if length(gpop)-1 != numpop
+        error("incorrect number of populations detected \n expected : $(length(gpop)-1) \n detected : $numpop \n see docstring to verify that your infile follows standard Genepop format ")
+    end
     d = Dict()
     locinames = gpop[1]
     popid = []
@@ -23,7 +25,7 @@ function readgenepop(infile::String; ploidy::Int64 = 2)
        end
     end
     ## print some basic information ##
-    println( "Input File : ", infile )
+    println("\n", "Input File : ", joinpath(@__DIR__, infile) )
     println( "Number of Individuals : ", length(indnames) )
     println( "Number of Loci : ", length(locinames) )
     println( "Number of Populations : ", maximum(popid) )
@@ -33,6 +35,7 @@ function readgenepop(infile::String; ploidy::Int64 = 2)
     for eachpop in 1:length(popcounts)÷2
         println("\t", popcounts[eachpop], "   |   ", popcounts[eachpop,2])
     end
+    println()
     PopObj(indnames,
           popid,
           locinames,
