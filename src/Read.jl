@@ -1,4 +1,14 @@
-
+"""
+    PopObj(ind::Array{String,1}, popid::Array{Union{Int64, String},1}, loci::Array{String,1}, ploidy::Int64, genos::Dict, xloc::Array{Union{Float64, Int64},1}, yloc::Array{Union{Float64, Int64},1})
+Type "PopObj:", which stores population genetics genotype data
+- `ind` ::Array{String,1} of individual names
+- `popid` ::Array{Union{Int64,String},1} of population names/numbers
+- `loci` ::Array{String,1} of locus names in order of appearance in `genos`
+- `ploidy` ::Int64 single integer of ploidy
+- `genos` ::Dict of [`ind`] => [`genotypes`::Array{String,1}] ordered by `loci`
+- `xloc` ::Array{Union{Int64,Float64},1} of longitude decimal degrees
+- `yloc` ::Array{Union{Int64,Float64},1} of lattitude decimal degrees
+"""
 mutable struct PopObj
     ind::Array{String,1}
     popid::Array{Union{Int64,String},1}
