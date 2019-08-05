@@ -10,7 +10,7 @@ mutable struct PopObj
 end
 
 """
-    loadgenepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop::Int64)
+    Read.genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop::Int64)
 Load a Genepop format file into memory as a PopObj object.
 - `infile` : path to Genepop file
 - `ploidy` : ploidy of the organism
@@ -22,7 +22,7 @@ File must follow standard Genepop formatting:
 - A line with a particular keyword (e.g. "POP") must delimit populations
 - File is tab or space delimted
 
-usage: `waspsNY = loadgenepop("wasp_hive.gen", ploidy = 2, popsep = "POP", numpop = 2);`
+usage: `waspsNY = Read.genepop("wasp_hive.gen", ploidy = 2, popsep = "POP", numpop = 2);`
 
 Genepop file example:  \n
 ---------------------
@@ -41,7 +41,7 @@ Newcomb_03,  254230 000000 090100 \n
 Newcomb_04,  254230 564000 090120 \n
 ---------------------
 """
-function loadgenepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop::Int64)
+function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop::Int64)
     gpop = split(open(readlines,infile)[2:end], "POP")
     if length(gpop)-1 != numpop
         error("incorrect number of populations detected \n expected : $(length(gpop)-1) \n detected : $numpop \n see docstring to verify that your infile follows standard Genepop format ")
@@ -80,7 +80,7 @@ function loadgenepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", num
 end
 
 """
-    loadcsv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
+    Read.csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
 Load a CSV-type file into memory as a PopObj object
 - `infile` : path to Genepop file
 - `delim` values can be space (" "), comma (","), tab ("\\t"), etc.
@@ -90,7 +90,7 @@ File formatting:
 - Individuals names must be first value in row
 - Population ID's must be second value in row
 
-example: `lizardsCA = loadcsv("CA_lizards.csv", delim = ",", ploidy = 2);`
+example: `lizardsCA = Read.csv("CA_lizards.csv", delim = ",", ploidy = 2);`
 
 Formatting example:  \n
 ---------------------  \n
@@ -102,7 +102,7 @@ snbarb_02,2,001001,001001,001001 \n
 snbarb_03,2,001002,001001,001001 \n
 ---------------------
 """
-function loadcsv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
+function csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
     gpop = open(readlines,infile)
     locinames = split(gpop[1], delim)
     popid = []
