@@ -7,7 +7,7 @@ Type "PopObj:", which stores population genetics genotype data
 - `ploidy` ::Int64 single integer of ploidy
 - `genos` ::Dict of [`ind`] => [`genotypes`::Array{String,1}] ordered by `loci`
 - `xloc` ::Array{Union{Int64,Float64},1} of longitude decimal degrees
-- `yloc` ::Array{Union{Int64,Float64},1} of lattitude decimal degrees
+- `yloc` ::Array{Union{Int64,Float64},1} of latitude decimal degrees
 """
 mutable struct PopObj
     ind::Array{String,1}
@@ -24,12 +24,12 @@ end
 Load a Genepop format file into memory as a PopObj object.
 - `infile` : path to Genepop file
 - `ploidy` : ploidy of the organism
-- `popsep` : word that separates populations in `infile` (e.g. "POP")
+- `popsep` : word that separates populations in `infile` (default: "POP")
 - `numpop` : number of populations in `infile` (used for checking parser)
 File must follow standard Genepop formatting:
 - First line is a comment (and skipped)
-- Loci are listed after comment as one-per-line without commas
-- A line with a particular keyword (e.g. "POP") must delimit populations
+- Loci are listed after comment as one-per-line without commas or in single comma-separated row
+- A line with a particular keyword (default "POP") must delimit populations
 - File is tab or space delimted
 
 usage: `waspsNY = Read.genepop("wasp_hive.gen", ploidy = 2, popsep = "POP", numpop = 2);`
@@ -52,12 +52,18 @@ Newcomb_04,  254230 564000 090120 \n
 ---------------------
 """
 function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop::Int64)
-    gpop = split(open(readlines,infile)[2:end], "POP")
+    gpop = split(open(readlines,infile)[2:end], popsep)
     if length(gpop)-1 != numpop
-        error("incorrect number of populations detected \n expected : $(length(gpop)-1) \n detected : $numpop \n see docstring to verify that your infile follows standard Genepop format ")
+        error("incorrect number of populations detected, see docstring for formatting
+            expected : $numpop
+            detected : $(length(gpop)-1) ")
+    end
+    if length(split(gpop[1], ",")) > 1
+        locinames = split(gpop[1],",") |> Array{String,1}
+    else
+        locinames = gpop[1]
     end
     d = Dict()
-    locinames = gpop[1]
     popid = []
     indnames = []
     for i in 2:length(gpop)
@@ -68,7 +74,7 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
        end
     end
     ## print some basic information ##
-    println("\n", "Input File : ", joinpath(@__DIR__, infile) )
+    println("\n", "Input File : ", abspath(infile) )
     println( "Number of Individuals : ", length(indnames) )
     println( "Number of Loci : ", length(locinames) )
     println( "Number of Populations : ", maximum(popid) )
@@ -84,21 +90,24 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
           locinames,
           ploidy,
           d,
-          fill( 0, length(indnames) ),
-          fill( 0, length(indnames) )
+          [],
+          []
           ) ;
 end
 
+
 """
-    Read.csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
+    Read.csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2, location::Bool = false)
 Load a CSV-type file into memory as a PopObj object
 - `infile` : path to Genepop file
 - `delim` values can be space (" "), comma (","), tab ("\\t"), etc.
 - `ploidy` : ploidy of the organism
+- `location` : decimal degrees longitude/latitude provided as values 3/4
 File formatting:
 - Loci names must be first row
 - Individuals names must be first value in row
 - Population ID's must be second value in row
+- [Optional] longitude (x) values third value in row, latitude (y) fourth
 
 example: `lizardsCA = Read.csv("CA_lizards.csv", delim = ",", ploidy = 2);`
 
@@ -112,22 +121,36 @@ snbarb_02,2,001001,001001,001001 \n
 snbarb_03,2,001002,001001,001001 \n
 ---------------------
 """
-function csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
+function csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2, location::Bool = false)
     gpop = open(readlines,infile)
     locinames = split(gpop[1], delim)
     popid = []
     indnames = []
+    locx = []
+    locy = []
     d = Dict()
-    for i in gpop[2:end]
-        tmp = split(i, delim) |> Array{String,1}
-        d[tmp[1]] = tmp[3:end]
-        push!(indnames, tmp[1])
-        push!(popid, parse(Int64,tmp[2]))
+    if location == false
+        for i in gpop[2:end]
+            tmp = split(i, delim) |> Array{String,1}
+            d[tmp[1]] = tmp[3:end]
+            push!(indnames, tmp[1])
+            push!(popid, parse(Int64,tmp[2]))
+        end
+    else
+        for i in gpop[2:end]
+            tmp = split(i, delim) |> Array{String,1}
+            d[tmp[1]] = tmp[5:end]
+            push!(indnames, tmp[1])
+            push!(popid, parse(Int64,tmp[2]))
+            push!(locx, tmp[3])
+            push!(locy, tmp[4])
+        end
     end
     ## print some basic information ##
-    println("\n", "Input File : ", joinpath(@__DIR__, infile) )
+    println("\n", "Input File : ", abspath(infile) )
     println( "Number of Individuals : ", length(indnames) )
     println( "Number of Loci : ", length(locinames) )
+    location == false && println("No location data provided")
     println( "Number of Populations : ", maximum(popid) )
     println( "\t", "Pop | #Inds " )
     println( "\t", "----------- " )
@@ -141,7 +164,7 @@ function csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2)
           locinames,
           ploidy,
           d,
-          fill( 0, length(indnames) ),
-          fill( 0, length(indnames) )
+          locx,
+          locy
           ) ;
 end
