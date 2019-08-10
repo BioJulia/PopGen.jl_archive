@@ -78,11 +78,11 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
     println( "Number of Individuals : ", length(indnames) )
     println( "Number of Loci : ", length(locinames) )
     println( "Number of Populations : ", maximum(popid) )
-    println( "\t", "Pop | #Inds " )
-    println( "\t", "----------- " )
-    popcounts = hcat(unique(popid),[sum(popid .== i) for i in unique(popid)])
+    println( "   ", "#Inds | Pop " )
+    println( "   ", "--------------" )
+    popcounts = hcat([sum(x.popid .== i) for i in unique(x.popid)],unique(x.popid))
     for eachpop in 1:length(popcounts)÷2
-        println("\t", popcounts[eachpop], "   |   ", popcounts[eachpop,2])
+        println("\t", popcounts[eachpop], "\t", " |", "\t", popcounts[eachpop,2])
     end
     println()
     PopObj(indnames,
