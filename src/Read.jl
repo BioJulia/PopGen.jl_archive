@@ -1,25 +1,4 @@
 """
-    PopObj(ind::Array{String,1}, popid::Array{Union{Int64, String},1}, loci::Array{String,1}, ploidy::Int64, genos::Dict, xloc::Array{Union{Float64, Int64},1}, yloc::Array{Union{Float64, Int64},1})
-Type "PopObj:", which stores population genetics genotype data
-- `ind` ::Array{String,1} of individual names
-- `popid` ::Array{Union{Int64,String},1} of population names/numbers
-- `loci` ::Array{String,1} of locus names in order of appearance in `genos`
-- `ploidy` ::Int64 single integer of ploidy
-- `genos` ::Dict of [`ind`] => [`genotypes`::Array{String,1}] ordered by `loci`
-- `xloc` ::Array{Union{Int64,Float64},1} of longitude decimal degrees
-- `yloc` ::Array{Union{Int64,Float64},1} of latitude decimal degrees
-"""
-mutable struct PopObj
-    ind::Array{String,1}
-    popid::Array{Union{Int64,String},1}
-    loci::Array{String,1}
-    ploidy::Int64
-    genos::Dict
-    xloc::Array{Union{Int64,Float64},1}
-    yloc::Array{Union{Int64,Float64},1}
-end
-
-"""
     Read.genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop::Int64)
 Load a Genepop format file into memory as a PopObj object.
 - `infile` : path to Genepop file
@@ -69,8 +48,15 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
     for i in 2:length(gpop)
         append!(popid, fill(i-1,length(gpop[i])))
         for j in 1:length(gpop[i])
+            phasedloci = []
             push!(indnames, split( strip(gpop[i][j]), r"\,|\t")[1] )
-            d[ last(indnames) ] = split( strip(gpop[i][j]), r"\s|\t" )[2:end] |> Array{String,1}
+            unphasedloci = split( strip(gpop[i][j]), r"\s|\t" )[2:end] |> Array{String,1}
+            # phase genotypes by ploidy
+            for locus in unphasedloci
+                phasedlocus = parse.(Int64,[join(i) for i in Iterators.partition(locus,length(locus)÷ploidy)])  |> Tuple
+                push!(phasedloci, phasedlocus)
+            end
+            d[ last(indnames) ] = phasedloci
        end
     end
     ## print some basic information ##
@@ -80,7 +66,7 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
     println( "Number of Populations : ", maximum(popid) )
     println( "   ", "#Inds | Pop " )
     println( "   ", "--------------" )
-    popcounts = hcat([sum(x.popid .== i) for i in unique(x.popid)],unique(x.popid))
+    popcounts = hcat([sum(popid .== i) for i in unique(popid)],unique(popid))
     for eachpop in 1:length(popcounts)÷2
         println("\t", popcounts[eachpop], "\t", " |", "\t", popcounts[eachpop,2])
     end
@@ -121,7 +107,7 @@ snbarb_02,2,001001,001001,001001 \n
 snbarb_03,2,001002,001001,001001 \n
 ---------------------
 """
-function csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2, location::Bool = false)
+function csv(infile::String; delim::Union{Char,String,Regex} = ",", ploidy::Int64 = 2, location::Bool = false)
     gpop = open(readlines,infile)
     locinames = split(gpop[1], delim)
     popid = []
@@ -132,16 +118,27 @@ function csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2,
     if location == false
         for i in gpop[2:end]
             tmp = split(i, delim) |> Array{String,1}
-            d[tmp[1]] = tmp[3:end]
+            phasedloci = []
+            # phase genotypes by ploidy
+            for locus in tmp[3:end]
+                phasedlocus = parse.(Int64,[join(i) for i in Iterators.partition(locus,length(locus)÷ploidy)])|> Tuple
+                push!(phasedloci, phasedlocus)
+            end
+            d[tmp[1]] = phasedloci
             push!(indnames, tmp[1])
-            push!(popid, parse(Int64,tmp[2]))
+            push!(popid, tmp[2])
         end
     else
         for i in gpop[2:end]
             tmp = split(i, delim) |> Array{String,1}
-            d[tmp[1]] = tmp[5:end]
+            phasedloci = []
+            for locus in tmp[5:end]
+                phasedlocus = parse.(Int64,[join(i) for i in Iterators.partition(locus,length(locus)÷ploidy)])|> Tuple
+                push!(phasedloci, phasedlocus)
+            end
+            d[tmp[1]] = phasedloci
             push!(indnames, tmp[1])
-            push!(popid, parse(Int64,tmp[2]))
+            push!(popid, tmp[2])
             push!(locx, tmp[3])
             push!(locy, tmp[4])
         end
@@ -154,7 +151,7 @@ function csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2,
     println( "Number of Populations : ", maximum(popid) )
     println( "   ", "#Inds | Pop " )
     println( "   ", "--------------" )
-    popcounts = hcat([sum(x.popid .== i) for i in unique(x.popid)],unique(x.popid))
+    popcounts = hcat([sum(popid .== i) for i in unique(popid)],unique(popid))
     for eachpop in 1:length(popcounts)÷2
         println("\t", popcounts[eachpop], "\t", " |", "\t", popcounts[eachpop,2])
     end
