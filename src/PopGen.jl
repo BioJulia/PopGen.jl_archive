@@ -23,7 +23,7 @@ export PopObj,
 
     include("/home/pdimens/PopGen/src/PopObj.jl")
     include("/home/pdimens/PopGen/src/Read.jl")
-    include("/home/pdimens/PopGen/src/PopObjManipulate.jl")
+    include("/home/pdimens/PopGen/src/Manipulate.jl")
 
 
 
