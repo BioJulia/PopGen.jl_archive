@@ -122,16 +122,18 @@ end
 
 
 """
-    queryloci(x::PopObj; loci::Array{String,1})
+    genotypes(x::PopObj; loci::Array{String,1})
 Get the per-individual genotypes of an array of `loci` in a `PopObj`.
 - Locus names are case insensitive, but must be in quotes
 - Query a single locus as a 1-dimensional Array
 
 Examples:
+
 genotypes(eggplant, loci = ["contig_001", "contig_101", "contig_5150"])
+
 genotypes(eggplant, loci = ["contig_099"])
 """
-function queryloci(x::PopObj; loci::Array{String,1})
+function genotypes(x::PopObj; loci::Array{String,1})
     positions = []
     for each in loci
         lowercase(each) ∉ lowercase.(x.loci) && error("$each not found in PopObj")
@@ -158,3 +160,47 @@ function queryloci(x::PopObj; loci::Array{String,1})
     end
     hcat(sort(collect(keys(x.genotypes))), returnarray)
 end
+
+
+"""
+    Base.missing(x::PopObj; plot::Bool = false)
+Identify and count missing loci in each individual of a `PopObj`. Will print out
+counts per individual but return a `Dict` of which loci are missing for each
+individual. Use `plot = true` to only print counts with a complementary plot.
+
+Example:
+
+`aardvark = genepop("aardvark.gen", numpop = 5)`  # load file to PopObj
+
+`misscounts = missing(aardvark) ;`
+"""
+function Base.missing(x::PopObj; plot::Bool = false)
+    d = Dict()
+    nmissing = []
+    for each in sort(collect(keys(x.genotypes)))
+        missloci = x.loci[findall(i->i==(0,0), x.genotypes[each])]
+        push!(nmissing, length(missloci))
+        if length(missloci) == 0
+            println(each, "  ", 0)
+        else
+            d[string(each)] =  missloci
+            println(each, "  ", length(missloci))
+        end
+    end
+    if plot == true
+        summ = sortslices(hcat(nmissing,x.ind), dims = 1)
+        missingplot = bar(x=summ[1:end,1],
+                          y = summ[1:end,2],
+                          name = "Missing Data",
+                          orientation = :h,
+                          )
+        layout = Layout(title = "Missing loci per individual",
+                        xaxis_title = "# missing loci",
+                        left_margin = 110
+                        )
+        return plot(missingplot, layout)
+    else
+        return d
+    end
+end
+
