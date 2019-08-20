@@ -92,7 +92,7 @@ function popid(x::PopObj; listall::Bool = false)
     if listall == true
         hcat(x.ind, x.popid)
     else
-        println( "   ", "#Inds | Pop " )
+        println( "   ", " #Inds | Pop " )
         println( "   ", "--------------" )
         popcounts = hcat([sum(x.popid .== i) for i in unique(x.popid)],unique(x.popid))
         for eachpop in 1:length(popcounts)÷2
@@ -142,7 +142,7 @@ function genotypes(x::PopObj; loci::Array{String,1})
         push!(positions, geno_position[1])
     end
     returnarray = []
-    for indiv in sort(collect(keys(x.genotypes)))
+    for indiv in x.ind
         tmp = []
         for posit in positions
             if length(tmp) == 0
@@ -158,7 +158,7 @@ function genotypes(x::PopObj; loci::Array{String,1})
             returnarray = cat(returnarray,tmp, dims = 1)
         end
     end
-    hcat(sort(collect(keys(x.genotypes))), returnarray)
+    hcat(x.ind, returnarray)
 end
 
 
@@ -174,33 +174,57 @@ Example:
 
 `misscounts = missing(aardvark) ;`
 """
-function Base.missing(x::PopObj; plot::Bool = false)
+function Base.missing(x::PopObj)
     d = Dict()
     nmissing = []
-    for each in sort(collect(keys(x.genotypes)))
+    misslociarray = []
+    for each in x.ind
         missloci = x.loci[findall(i->i==(0,0), x.genotypes[each])]
         push!(nmissing, length(missloci))
         if length(missloci) == 0
-            println(each, "  ", 0)
+            push!(misslociarray, [])
         else
-            d[string(each)] =  missloci
-            println(each, "  ", length(missloci))
+            push!(misslociarray, missloci)
         end
     end
-    if plot == true
-        summ = sortslices(hcat(nmissing,x.ind), dims = 1)
-        missingplot = bar(x=summ[1:end,1],
-                          y = summ[1:end,2],
-                          name = "Missing Data",
-                          orientation = :h,
-                          )
-        layout = Layout(title = "Missing loci per individual",
-                        xaxis_title = "# missing loci",
-                        left_margin = 110
-                        )
-        return plot(missingplot, layout)
-    else
-        return d
-    end
+        return DataFrame(ind = x.ind, population = string.(x.popid),  nmissing = nmissing, loci = misslociarray)
 end
 
+
+"""
+    plotmissing(x::PopObj; color = false)
+Return an interactive plot of the number of missing loci in individuals of a `PopObj`.
+To set a custom color palette, use `color = [color1, color2, etc.]`
+"""
+function plotmissing(x::PopObj; color = false)
+    df = missing(x);
+    ys = Array[subdf[!, :nmissing] for subdf in groupby(df[!, 1:3], :population)]
+    texts = Array[subdf[!, :ind] for subdf in groupby(df[!, 1:3], :population)]
+    popnum = length(df[!, :population] |> unique)
+    if color == false
+        colors = ["hsl($i, 50%, 50%)" for i in range(0, stop=300, length=popnum)]
+    else
+        colors = color
+    end
+    #meanmiss = scatter(;x = unique(df[!, :population]) , y = mean(df[!, :nmissing]), mode = "lines")
+    data = [
+            box(y=y,
+                marker_color=mc,
+                name=name,
+                text = text,
+                jitter = 1,
+                pointpos = 0,
+                marker_size = 8.5,
+                boxpoints = "all",
+                marker=attr(line=attr(width=0.75)),
+                )
+                for (y, mc, name, text) in zip(ys, colors, unique(df[!, :population]), texts)
+            ]
+    #push!(data, meanmiss)
+    layout = Layout(title = "Number of Missing Loci Among Populations",
+                    hovermode = "closest",
+                    yaxis = attr(title = "# missing loci", zeroline = false),
+                    xaxis = attr(title = "Population", zeroline = false)
+                    )
+    return plot(data, layout)
+end
