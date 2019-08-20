@@ -16,4 +16,24 @@ mutable struct PopObj
     genotypes::Dict
     longitude::Array{Union{Int64,Float64},1}
     latitude::Array{Union{Int64,Float64},1}
+    #PopObj() = new(ind, popid, loci, ploidy, genotypes, longitude, latitude)
+end
+
+function Base.show(io::IO , x::PopObj)
+    println(io, "Object of type PopObj:")
+    if length(x.latitude) ==0 && length(x.longitude) == 0
+        println(io, "No location data provided")
+    end
+    println(io,"\nNumber of individuals : $(length(x.ind))","\n",
+            "Number of loci : $(length(x.loci))","\n",
+            "Ploidy : $(x.ploidy)", "\n",
+            "Number of populations : $(length(x.popid |> unique))","\n\n",
+            "   #Inds | Pop","\n",
+            "   --------------")
+    popcounts = hcat([sum(x.popid .== i) for i in unique(x.popid)],unique(x.popid))
+    for eachpop in 1:length(popcounts)÷2
+        println(io, "\t ", popcounts[eachpop], "\t", " |", "\t", popcounts[eachpop,2])
+    end
+    println(io, "\nAvailable fields: ind, popid, loci, ploidy, genotypes, longitude, latitude")
+#end
 end
