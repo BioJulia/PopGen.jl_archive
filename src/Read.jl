@@ -59,18 +59,6 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
             d[ last(indnames) ] = phasedloci
        end
     end
-    ## print some basic information ##
-    println("\n", "Input File : ", abspath(infile) )
-    println( "Number of Individuals : ", length(indnames) )
-    println( "Number of Loci : ", length(locinames) )
-    println( "Number of Populations : ", maximum(popid) )
-    println( "   ", "#Inds | Pop " )
-    println( "   ", "--------------" )
-    popcounts = hcat([sum(popid .== i) for i in unique(popid)],unique(popid))
-    for eachpop in 1:length(popcounts)÷2
-        println("\t", popcounts[eachpop], "\t", " |", "\t", popcounts[eachpop,2])
-    end
-    println()
     PopObj(indnames,
           popid,
           locinames,
@@ -142,18 +130,6 @@ function csv(infile::String; delim::Union{Char,String,Regex} = ",", ploidy::Int6
             push!(locx, tmp[3])
             push!(locy, tmp[4])
         end
-    end
-    ## print some basic information ##
-    println("\n", "Input File : ", abspath(infile) )
-    println( "Number of Individuals : ", length(indnames) )
-    println( "Number of Loci : ", length(locinames) )
-    location == false && println("No location data provided")
-    println( "Number of Populations : ", maximum(popid) )
-    println( "   ", "#Inds | Pop " )
-    println( "   ", "--------------" )
-    popcounts = hcat([sum(popid .== i) for i in unique(popid)],unique(popid))
-    for eachpop in 1:length(popcounts)÷2
-        println("\t", popcounts[eachpop], "\t", " |", "\t", popcounts[eachpop,2])
     end
     println()
     PopObj(indnames,
