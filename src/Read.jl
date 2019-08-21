@@ -59,6 +59,7 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
             d[ last(indnames) ] = phasedloci
        end
     end
+    println("\n", "Input File: ", abspath(infile) )
     PopObj(indnames,
           popid,
           locinames,
@@ -131,7 +132,7 @@ function csv(infile::String; delim::Union{Char,String,Regex} = ",", ploidy::Int6
             push!(locy, tmp[4])
         end
     end
-    println()
+    println("\n", "Input File : ", abspath(infile) )
     PopObj(indnames,
           popid,
           locinames,
