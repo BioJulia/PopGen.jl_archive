@@ -133,13 +133,20 @@ genotypes(eggplant, loci = ["contig_001", "contig_101", "contig_5150"])
 
 genotypes(eggplant, loci = ["contig_099"])
 """
-function genotypes(x::PopObj; loci::Array{String,1})
+function genotypes(x::PopObj; loci::Union{String, Array})
     positions = []
-    for each in loci
-        lowercase(each) ∉ lowercase.(x.loci) && error("$each not found in PopObj")
-        geno_position = findall(i->i==lowercase(each), lowercase.(x.loci))
-        length(geno_position) > 1 && error("More than one instance of $each in PopObj.genotypes. Please check data")
+    if typeof(loci) == String
+        lowercase(loci) ∉ lowercase.(x.loci) && error("$loci not found in PopObj")
+        geno_position = findall(i->i==lowercase(loci), lowercase.(x.loci))
+        length(geno_position) > 1 && error("More than one instance of $loci in PopObj.genotypes. Please check data")
         push!(positions, geno_position[1])
+    else
+    for each in loci
+            lowercase(each) ∉ lowercase.(x.loci) && error("$each not found in PopObj")
+            geno_position = findall(i->i==lowercase(each), lowercase.(x.loci))
+            length(geno_position) > 1 && error("More than one instance of $each in PopObj.genotypes. Please check data")
+            push!(positions, geno_position[1])
+        end
     end
     returnarray = []
     for indiv in x.ind
@@ -272,15 +279,12 @@ end
 function remove_ind!(x::PopObj, inds::Union{String, Array})
     # get individuals indices
     if typeof(inds) == String
-        if inds ∉ x.ind
-            error("individual \"$inds\" not found")
-        end
+        inds ∉ x.ind && error("individual \"$inds\" not found")
         idx = findfirst(i -> i == inds, x.ind)
     else
         idx = []
         for each in inds
-            if each ∉ x.ind
-                error("individual \"$each\" not found")
+            each ∉ x.ind && error("individual \"$each\" not found")
             end
             push!(idx, findfirst(i -> i == each, x.ind) )
         end
@@ -300,16 +304,12 @@ end
 function remove_loci!(x::PopObj, loci::Union{String, Array})
     # get loci indices
     if typeof(loci) == String
-        if loci ∉ x.loci
-            error("locus \"$loci\" not found")
-        end
+        loci ∉ x.loci && error("locus \"$loci\" not found")
         idx = findfirst(i -> i == loci, x.loci)
     else
         idx = []
         for locus in loci
-            if locus ∉ x.loci
-                error("locus \"$locus\" not found")
-            end
+            locus ∉ x.loci && error("locus \"$locus\" not found")
             push!(idx, findfirst(i -> i == locus, x.loci) )
         end
     end
@@ -320,4 +320,3 @@ function remove_loci!(x::PopObj, loci::Union{String, Array})
     end
     return x
 end
-
