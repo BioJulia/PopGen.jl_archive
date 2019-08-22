@@ -164,18 +164,17 @@ end
 
 """
     Base.missing(x::PopObj; plot::Bool = false)
-Identify and count missing loci in each individual of a `PopObj`. Will print out
-counts per individual but return a `Dict` of which loci are missing for each
-individual. Use `plot = true` to only print counts with a complementary plot.
+Identify and count missing loci in each individual of a `PopObj`. Returns a tuple
+of `DataFrames`: loci per individual, number per loci.
 
 Example:
 
 `aardvark = genepop("aardvark.gen", numpop = 5)`  # load file to PopObj
 
-`misscounts = missing(aardvark) ;`
+`missing_ind,missing_loc = missing(aardvark)`
 """
 function Base.missing(x::PopObj)
-    d = Dict()
+    # by individuals
     nmissing = []
     misslociarray = []
     for each in x.ind
@@ -187,44 +186,138 @@ function Base.missing(x::PopObj)
             push!(misslociarray, missloci)
         end
     end
-        return DataFrame(ind = x.ind, population = string.(x.popid),  nmissing = nmissing, loci = misslociarray)
+    ind_df = DataFrame(ind = x.ind, population = string.(x.popid),  nmissing = nmissing, loci = misslociarray)
+
+    # count missing loci
+    d = Dict()
+    for b in ind_df[!, :4]
+        for c in b
+            if c ∉ keys(d)
+                d[c] = 1
+            else
+                d[c] += 1
+            end
+        end
+    end
+
+    # add loci without any missing
+    countarray = []
+    for locus in x.loci
+        if locus ∉ keys(d)
+            d[locus] = 0
+        end
+        push!(countarray, d[locus])
+    end
+
+    #convert to DF and sort
+    loci_df = hcat(x.loci, countarray) |> DataFrame ; sort!(loci_df, 2)
+    return (ind_df, loci_df)
 end
 
 
 """
-    plotmissing(x::PopObj; color = false)
-Return an interactive plot of the number of missing loci in individuals of a `PopObj`.
-To set a custom color palette, use `color = [color1, color2, etc.]`
+    plot_missing(x::PopObj; color = false)
+Return an interactive plot of the number of missing loci in individuals of a
+`PopObj`, along with the number of missing individuals per locus. To set a
+custom color palette, use `color = [color1, color2, etc.]`
 """
-function plotmissing(x::PopObj; color = false)
-    df = missing(x);
-    ys = Array[subdf[!, :nmissing] for subdf in groupby(df[!, 1:3], :population)]
-    texts = Array[subdf[!, :ind] for subdf in groupby(df[!, 1:3], :population)]
-    popnum = length(df[!, :population] |> unique)
+function plot_missing(x::PopObj; color = false)
+    by_ind,by_loci = missing(x);
+    ys = Array[subdf[!, :nmissing] for subdf in groupby(by_ind[!, 1:3], :population)]
+    texts = Array[subdf[!, :ind] for subdf in groupby(by_ind[!, 1:3], :population)]
+    popnum = length(by_ind[!, :population] |> unique)
     if color == false
         colors = ["hsl($i, 50%, 50%)" for i in range(0, stop=300, length=popnum)]
     else
         colors = color
     end
-    #meanmiss = scatter(;x = unique(df[!, :population]) , y = mean(df[!, :nmissing]), mode = "lines")
-    data = [
-            box(y=y,
-                marker_color=mc,
-                name=name,
-                text = text,
-                jitter = 1,
-                pointpos = 0,
-                marker_size = 8.5,
-                boxpoints = "all",
-                marker=attr(line=attr(width=0.75)),
-                )
-                for (y, mc, name, text) in zip(ys, colors, unique(df[!, :population]), texts)
-            ]
-    #push!(data, meanmiss)
-    layout = Layout(title = "Number of Missing Loci Among Populations",
+    returnplots = []
+
+    byind = [box(y=y,
+            marker_color=mc,
+            name=name,
+            text = text,
+            jitter = 1,
+            pointpos = 0,
+            marker_size = 8.5,
+            boxpoints = "all",
+            marker=attr(line=attr(width=0.75)),
+            )
+            for (y, mc, name, text) in zip(ys, colors, unique(by_ind[!, :population]), texts)]
+
+    bylocus = bar(;x = by_loci[!, :1],
+                  y = by_loci[!, :2],
+                  marker=attr(color="rgb(146,134,184)"),
+                  name = "# missing data",
+                  )
+
+    layout_ind = Layout(title = "Number of missing loci per population",
                     hovermode = "closest",
                     yaxis = attr(title = "# missing loci", zeroline = false),
                     xaxis = attr(title = "Population", zeroline = false)
                     )
-    return plot(data, layout)
+    layout_loci = Layout(title = "Missing data per locus",
+                    hovermode = "closest",
+                    bargap = 0.05,
+                    yaxis = attr(title = "# missing", zeroline = false),
+                    xaxis = attr(title = "loci", zeroline = false, showticklabels = false),
+                    )
+    ind_plot =  plot(byind, layout_ind)
+    loci_plot = plot(bylocus, layout_loci)
+
+    return [ind_plot loci_plot]
 end
+
+
+function remove_ind!(x::PopObj, inds::Union{String, Array})
+    # get individuals indices
+    if typeof(inds) == String
+        if inds ∉ x.ind
+            error("individual \"$inds\" not found")
+        end
+        idx = findfirst(i -> i == inds, x.ind)
+    else
+        idx = []
+        for each in inds
+            if each ∉ x.ind
+                error("individual \"$each\" not found")
+            end
+            push!(idx, findfirst(i -> i == each, x.ind) )
+        end
+    end
+    deleteat!(x.ind, idx)  # delete name(s)
+    deleteat!(x.popid, idx)    # delete popid(s)
+    if length(x.longitude) != 0 && length(x.latitude) != 0
+        deleteat!(x.longitude, idx)    # delete xloc(s)
+        deleteat!(x.longitude, idx)    # delete yloc(s)
+    end
+    for each in inds
+        delete!(x.genotypes, each)  # delete genotypes
+    end
+    return x
+end
+
+function remove_loci!(x::PopObj, loci::Union{String, Array})
+    # get loci indices
+    if typeof(loci) == String
+        if loci ∉ x.loci
+            error("locus \"$loci\" not found")
+        end
+        idx = findfirst(i -> i == loci, x.loci)
+    else
+        idx = []
+        for locus in loci
+            if locus ∉ x.loci
+                error("locus \"$locus\" not found")
+            end
+            push!(idx, findfirst(i -> i == locus, x.loci) )
+        end
+    end
+    deleteat!(x.loci, idx)  # delete loci names from list
+    # remove genotypes of loci from all individuals
+    for each in x.ind
+        deleteat!(x.genotypes[each], idx)
+    end
+    return x
+end
+
