@@ -11,3 +11,11 @@ Population Genetics functions in Julia.
   - ~~CSV~~
   - JSON ?
   - Plink?
+  - VCF
+4. Add correct deps
+5. Heterozygosity calculations
+  - Observed
+  - Expected
+  - Per locus
+  - Per individual
+  - Chi^2
