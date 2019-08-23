@@ -1,6 +1,8 @@
 module PopGen
+using DataFrames, PlotlyJS, Statistics
 
 export PopObj,
+    show,
     csv,
     genepop,
     indnames,
@@ -8,7 +10,9 @@ export PopObj,
     locations,
     locations!,
     popid,
-    popid!
+    popid!,
+    missing,
+    plotmissing
 
 
 
@@ -24,7 +28,7 @@ export PopObj,
     include("/home/pdimens/PopGen/src/PopObj.jl")
     include("/home/pdimens/PopGen/src/Read.jl")
     include("/home/pdimens/PopGen/src/Manipulate.jl")
-
+    include("/home/pdimens/PopGen/src/Plotting.jl")
 
 
 end # module PopGen

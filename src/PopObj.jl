@@ -22,18 +22,18 @@ end
 function Base.show(io::IO , x::PopObj)
     println(io, "Object of type PopObj:")
     if length(x.latitude) ==0 && length(x.longitude) == 0
-        println(io, "No location data provided")
+        println(io, "No location data provided", "\n")
     end
-    println(io,"\nNumber of individuals : $(length(x.ind))","\n",
-            "Number of loci : $(length(x.loci))","\n",
-            "Ploidy : $(x.ploidy)", "\n",
-            "Number of populations : $(length(x.popid |> unique))","\n\n",
-            "   #Inds | Pop","\n",
-            "   --------------")
+    println(io, "Number of individuals: $(length(x.ind))")
+    println(io, x.ind[1:3] , " \u2026 ", x.ind[end-3:end], "\n")
+    println(io, "Number of loci: $(length(x.loci))")
+    println(io, x.loci[1:3], " \u2026 " , x.loci[end-3:end], "\n" )
+    println(io, "Ploidy: $(x.ploidy)")
+    println(io, "Number of populations: $(length(x.popid |> unique))","\n")
+    println(io, "   #Inds | Pop","\n", "   --------------")
     popcounts = hcat([sum(x.popid .== i) for i in unique(x.popid)],unique(x.popid))
     for eachpop in 1:length(popcounts)÷2
         println(io, "\t ", popcounts[eachpop], "\t", " |", "\t", popcounts[eachpop,2])
     end
     println(io, "\nAvailable fields: ind, popid, loci, ploidy, genotypes, longitude, latitude")
-#end
 end
