@@ -123,15 +123,14 @@ end
 
 """
     genotypes(x::PopObj; loci::Array{String,1})
-Get the per-individual genotypes of an array of `loci` in a `PopObj`.
+Get the per-individual genotypes of specific `loci` in a `PopObj`.
 - Locus names are case insensitive, but must be in quotes
-- Query a single locus as a 1-dimensional Array
 
 Examples:
 
 genotypes(eggplant, loci = ["contig_001", "contig_101", "contig_5150"])
 
-genotypes(eggplant, loci = ["contig_099"])
+genotypes(eggplant, loci = "contig_099")
 """
 function genotypes(x::PopObj; loci::Union{String, Array})
     positions = []
@@ -275,8 +274,17 @@ function plot_missing(x::PopObj; color = false)
     return [ind_plot loci_plot]
 end
 
+"""
+    remove!(x::PopObj, inds::Union{Array{String,1}})
+Removes selected individuals from a `PopObj`.
 
-function remove_ind!(x::PopObj, inds::Union{String, Array})
+Examples:
+
+`remove_ind!(sunflowers, "west_011")`
+
+`remove_ind!(sunflowers, ["west_011", "west_003", "east_051"])`
+"""
+function remove_ind!(x::PopObj, inds::Union{String,Array{String,1}})
     # get individuals indices
     if typeof(inds) == String
         inds ∉ x.ind && error("individual \"$inds\" not found")
@@ -285,7 +293,6 @@ function remove_ind!(x::PopObj, inds::Union{String, Array})
         idx = []
         for each in inds
             each ∉ x.ind && error("individual \"$each\" not found")
-            end
             push!(idx, findfirst(i -> i == each, x.ind) )
         end
     end
@@ -301,7 +308,18 @@ function remove_ind!(x::PopObj, inds::Union{String, Array})
     return x
 end
 
-function remove_loci!(x::PopObj, loci::Union{String, Array})
+
+"""
+    remove_loci!(x::PopObj; loci::Union{String, Array{String,1}})
+Removes selected loci from a `PopObj`.
+
+Examples:
+
+`remove_loci!(tulips, "north_011")`
+
+`remove_loci!(tulips, ["north_011", "north_003", "south_051"])`
+"""
+function remove_loci!(x::PopObj, loci::Union{String, Array{String,1}})
     # get loci indices
     if typeof(loci) == String
         loci ∉ x.loci && error("locus \"$loci\" not found")
@@ -320,3 +338,4 @@ function remove_loci!(x::PopObj, loci::Union{String, Array})
     end
     return x
 end
+
