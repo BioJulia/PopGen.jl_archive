@@ -339,3 +339,77 @@ function remove_loci!(x::PopObj, loci::Union{String, Array{String,1}})
     return x
 end
 
+
+"""
+    plot_locations(x::PopObj; region::String = "world", projection::String = "mercator")
+
+Returns a simple low resolution interactive scatterplot of the individuals in a
+`PopObj`. Default `region` and `projection` are "world" and "mercator", respectively.
+
+Example:
+
+`plot_locations(manatees, region = "usa", projection = "albers usa")`
+
+[regions]
+
+"usa","europe", "asia", "africa", "north america", "south america"
+
+[projections]
+
+"equirectangular", "mercator", "orthographic", "natural earth",
+"kavrayskiy7", "miller", "robinson", "eckert4",
+"azimuthal equal area", "azimuthal equidistant",
+"conic equal area", "conic conformal" , "conic equidistant",
+"gnomonic", "stereographic", "mollweide", "hammer",
+"transverse mercator", "albers usa", "winkel tripel",
+"aitoff", "sinusoidal"
+"""
+function plot_locations(x::PopObj; region::String = "world", projection::String = "mercator")
+    if projection ∉ ["equirectangular", "mercator", "orthographic", "natural earth",
+                    "kavrayskiy7", "miller", "robinson", "eckert4",
+                    "azimuthal equal area", "azimuthal equidistant",
+                    "conic equal area", "conic conformal" , "conic equidistant",
+                    "gnomonic", "stereographic", "mollweide", "hammer",
+                    "transverse mercator", "albers usa", "winkel tripel",
+                    "aitoff", "sinusoidal"]
+        error("Projection not recognized. Please see the help doc for full list of projection options")
+    end
+    locs = scattergeo(lat=x.latitude,
+                       lon=x.longitude,
+                       hoverinfo="text",
+                       text=["$i: $j" for (i,j) in zip(x.popid, x.ind)],
+                       marker_line_color="black", marker_line_width=2
+                       )
+    if region == "world"
+        geo = attr(scope = region,
+                   projection_type = projection,
+                   showcoastlines = false,
+                   showcountries = true,
+                   countrywidth = 0.75,
+                   countrycolor = "rgb(255,255,255)",
+                   subunitcolor = "rgb(255,255,255)",
+                   showland = true,
+                   landcolor = "rgb(217, 217, 217)",
+                   )
+   elseif region ∈ ["usa","europe", "asia", "africa", "north america", "south america"]
+       geo = attr(scope = region,
+                  showlakes = true,
+                  lakecolor = "#a5a5a5",
+                  showrivers = true,
+                  rivercolor = "#a5a5a5",
+                  showsubunits = true,
+                  projection_type = projection,
+                  showcoastlines = false,
+                  showcountries = true,
+                  countrywidth = 0.75,
+                  countrycolor = "rgb(255,255,255)",
+                  subunitcolor = "rgb(255,255,255)",
+                  showland = true,
+                  landcolor = "rgb(217, 217, 217)",
+                  )
+    else
+        error("Leave \"region =\" empty or use one of: usa, europe, asia, africa, north america, south america")
+    end
+   layout = Layout(;title="Sample locations", showlegend=false, geo=geo)
+   plot(locs, layout)
+end
