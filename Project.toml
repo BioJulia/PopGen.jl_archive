@@ -2,3 +2,7 @@ name = "PopGen"
 uuid = "f1e49dac-bbee-11e9-2681-8bf8261e0f8c"
 authors = ["pdimens <pdimens@live.com>"]
 version = "0.1.0"
+
+[deps]
+PlotlyJS = 
+DataFrames = 
