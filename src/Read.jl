@@ -11,7 +11,7 @@ File must follow standard Genepop formatting:
 - A line with a particular keyword (default "POP") must delimit populations
 - File is tab or space delimted
 
-usage: `waspsNY = Read.genepop("wasp_hive.gen", ploidy = 2, popsep = "POP", numpop = 2);`
+usage: `waspsNY = Read.genepop("wasp_hive.gen", ploidy = 2, popsep = "POP", numpops = 2);`
 
 Genepop file example:  \n
 ---------------------
@@ -30,11 +30,11 @@ Newcomb_03,  254230 000000 090100 \n
 Newcomb_04,  254230 564000 090120 \n
 ---------------------
 """
-function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop::Int64)
+function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpops::Int64)
     gpop = split(open(readlines,infile)[2:end], popsep)
-    if length(gpop)-1 != numpop
+    if length(gpop)-1 != numpops
         error("incorrect number of populations detected, see docstring for formatting
-            expected : $numpop
+            expected : $numpops
             detected : $(length(gpop)-1) ")
     end
     if length(split(gpop[1], ",")) > 1
@@ -42,37 +42,31 @@ function genepop(infile::String; ploidy::Int64 = 2, popsep::Any = "POP", numpop:
     else
         locinames = gpop[1]
     end
-    d = Dict()
+    d = Dict(i => [] for i in locinames)
     popid = []
     indnames = []
     for i in 2:length(gpop)
         append!(popid, fill(i-1,length(gpop[i])))
         for j in 1:length(gpop[i])
             phasedloci = []
-            push!(indnames, split( strip(gpop[i][j]), r"\,|\t")[1] )
-            unphasedloci = split( strip(gpop[i][j]), r"\s|\t" )[2:end] |> Array{String,1}
+            push!(indnames, split( strip(gpop[i][j]), r"\,|\t")[1])
+            unphasedloci = split( strip(gpop[i][j]), r"\s|\t")[2:end] |> Array{String,1}
             # phase genotypes by ploidy
             for locus in unphasedloci
                 phasedlocus = parse.(Int64,[join(i) for i in Iterators.partition(locus,length(locus)÷ploidy)])  |> Tuple
                 push!(phasedloci, phasedlocus)
             end
-            d[ last(indnames) ] = phasedloci
-       end
+            for (loc,geno) in zip(locinames, phasedloci)
+                push!(d[loc], geno)
+            end
+        end
     end
-    println("\n", "Input File: ", abspath(infile) )
-    PopObj(indnames,
-          popid,
-          locinames,
-          ploidy,
-          d,
-          [],
-          []
-          ) ;
+    PopObj(indnames,popid,locinames,ploidy,d,[],[])
 end
 
 
 """
-    Read.csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2, location::Bool = false)
+    csv(infile::String; delim::Union{Char,String,Regex}, ploidy::Int64 = 2, location::Bool = false)
 Load a CSV-type file into memory as a PopObj object
 - `infile` : path to Genepop file
 - `delim` values can be space (" "), comma (","), tab ("\\t"), etc.
@@ -99,11 +93,11 @@ snbarb_03,2,001002,001001,001001 \n
 function csv(infile::String; delim::Union{Char,String,Regex} = ",", ploidy::Int64 = 2, location::Bool = false)
     gpop = open(readlines,infile)
     locinames = split(gpop[1], delim)
+    d = Dict(i => [] for i in locinames)
     popid = []
     indnames = []
     locx = []
     locy = []
-    d = Dict()
     if location == false
         for i in gpop[2:end]
             tmp = split(i, delim) |> Array{String,1}
@@ -113,19 +107,24 @@ function csv(infile::String; delim::Union{Char,String,Regex} = ",", ploidy::Int6
                 phasedlocus = parse.(Int64,[join(i) for i in Iterators.partition(locus,length(locus)÷ploidy)])|> Tuple
                 push!(phasedloci, phasedlocus)
             end
-            d[tmp[1]] = phasedloci
+            for (loc,geno) in zip(locinames, phasedloci)
+                push!(d[loc], geno)
+            end
             push!(indnames, tmp[1])
             push!(popid, tmp[2])
         end
     else
         for i in gpop[2:end]
             tmp = split(i, delim) |> Array{String,1}
+            # phase loci according to ploidy
             phasedloci = []
             for locus in tmp[5:end]
                 phasedlocus = parse.(Int64,[join(i) for i in Iterators.partition(locus,length(locus)÷ploidy)])|> Tuple
                 push!(phasedloci, phasedlocus)
             end
-            d[tmp[1]] = phasedloci
+            for (loc,geno) in zip(locinames, phasedloci)
+                push!(d[loc], geno)
+            end
             push!(indnames, tmp[1])
             push!(popid, tmp[2])
             push!(locx, tmp[3])
@@ -133,12 +132,5 @@ function csv(infile::String; delim::Union{Char,String,Regex} = ",", ploidy::Int6
         end
     end
     println("\n", "Input File : ", abspath(infile) )
-    PopObj(indnames,
-          popid,
-          locinames,
-          ploidy,
-          d,
-          locx,
-          locy
-          ) ;
+    PopObj(indnames, popid, locinames, ploidy, d, locx, locy)
 end

@@ -22,12 +22,17 @@ end
 function Base.show(io::IO , x::PopObj)
     println(io, "Object of type PopObj:")
     if length(x.latitude) ==0 && length(x.longitude) == 0
-        println(io, "No location data provided", "\n")
+        println(io,"No location data provided")
+    else
+        println(io, "\nLongitude:")
+        println(io, string.(x.longitude[1:3]) , " \u2026 ", string.(x.longitude[end-2:end]), "\n")
+        println(io, "Latitude:")
+        println(io, string.(x.latitude[1:3]) , " \u2026 ", string.(x.latitude[end-2:end]), "\n")
     end
-    println(io, "Number of individuals: $(length(x.ind))")
-    println(io, x.ind[1:3] , " \u2026 ", x.ind[end-3:end], "\n")
+    println(io, "\nNumber of individuals: $(length(x.ind))")
+    println(io, x.ind[1:3] , " \u2026 ", x.ind[end-2:end], "\n")
     println(io, "Number of loci: $(length(x.loci))")
-    println(io, x.loci[1:3], " \u2026 " , x.loci[end-3:end], "\n" )
+    println(io, x.loci[1:3], " \u2026 " , x.loci[end-2:end], "\n" )
     println(io, "Ploidy: $(x.ploidy)")
     println(io, "Number of populations: $(length(x.popid |> unique))","\n")
     println(io, "   #Inds | Pop","\n", "   --------------")

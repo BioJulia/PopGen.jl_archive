@@ -9,11 +9,32 @@ indnames(x::PopObj) = x.ind
 
 """
     loci(x::PopObj)
-View loci names in a `PopObj`
+View the genotypes of all individuals for specific loci in a `PopObj`.
+Default shows all genotypes for all individuals. Use `loci =` to specify a single
+locus or array of loci to display.
 
-Equivalent to `PopObj.loci`
+`loci(wild_rice, "snp_451")`
+
+`loci(wild_rice, ["snp_451", "snp_011", "snp_314"])`
 """
-loci(x::PopObj) = x.loci
+function loci(x::PopObj, loci::Union{String, Array, Nothing}= nothing)
+    df = genotypes(x) ;
+    if loci != nothing
+        if typeof(loci) == String
+            loci ∉ x.loci && error("locus $loci not found in PopObj")
+            return df[!, [:ind, :population, Symbol(loci)]]
+        else
+            for locus in loci[2:end]
+                locus ∉ x.loci && println("NOTICE: locus \"$locus\" not found in PopObj!")
+            end
+            println()
+
+            return df[!, append!([:ind, :population], Symbol.(loci))]
+        end
+    else
+        return df
+    end
+end
 
 
 """
@@ -22,8 +43,17 @@ View location data (`.longitude` and `.latitude`) in a `PopObj`
 
 Use `locations!` to add spatial data to a `PopObj`
 """
-locations(x::PopObj) = hcat(x.longitude, x.latitude)
-
+function locations(x::PopObj)
+    if length(x.longitude) == 0 && length(x.latitude) == 0
+        @info "location data not provided"
+    elseif length(x.longitude) != length(x.latitude)
+        @warn "dimensions of longitude and latitude data not equal"
+        println("\t\tLengths:")
+        println("longitude: $(length(x.longitude)) | latitude: $(length(x.latitude))")
+    else
+        DataFrame(ind = x.ind, population = x.popid, longitude = x.longitude, latitude = x.latitude)
+    end
+end
 
 """
     locations!(x::PopObj; xloc::Array, yloc::Array)
@@ -33,7 +63,7 @@ Location data must be in order of `ind`. Replaces existing `PopObj` location dat
 - Decimal Degrees : `-11.431`
 - Decimal Minutes : `"-11 43.11"` (must use space and double-quotes)
 
-If conversion is not necessary, can directly assign `PopObj.xloc` and `PopObj.yloc`
+If conversion is not necessary, can directly assign `PopObj.longitude` and `PopObj.latitude`
 """
 function locations!(x::PopObj; xloc::Array, yloc::Array)
     # test for decimal degrees vs decimal minutes
@@ -90,7 +120,7 @@ View unique population ID's in a `PopObj`.
 """
 function popid(x::PopObj; listall::Bool = false)
     if listall == true
-        hcat(x.ind, x.popid)
+        DataFrame(ind = x.ind, population = x.popid)
     else
         println( "   ", " #Inds | Pop " )
         println( "   ", "--------------" )
@@ -122,51 +152,40 @@ end
 
 
 """
-    genotypes(x::PopObj; loci::Array{String,1})
-Get the per-individual genotypes of specific `loci` in a `PopObj`.
-- Locus names are case insensitive, but must be in quotes
+    genotypes(x::PopObj; inds::Array{String,1})
+Get all the genotypes of specific individuals within a `PopObj`.
+- Names must be in quotes
 
 Examples:
 
-genotypes(eggplant, loci = ["contig_001", "contig_101", "contig_5150"])
+genotypes(eggplant, inds = ["ital_001", "ital_101", "spai_031"])
 
-genotypes(eggplant, loci = "contig_099")
+genotypes(eggplant, inds = "ital_001")
 """
-function genotypes(x::PopObj; loci::Union{String, Array})
-    positions = []
-    if typeof(loci) == String
-        lowercase(loci) ∉ lowercase.(x.loci) && error("$loci not found in PopObj")
-        geno_position = findall(i->i==lowercase(loci), lowercase.(x.loci))
-        length(geno_position) > 1 && error("More than one instance of $loci in PopObj.genotypes. Please check data")
-        push!(positions, geno_position[1])
-    else
-    for each in loci
-            lowercase(each) ∉ lowercase.(x.loci) && error("$each not found in PopObj")
-            geno_position = findall(i->i==lowercase(each), lowercase.(x.loci))
-            length(geno_position) > 1 && error("More than one instance of $each in PopObj.genotypes. Please check data")
-            push!(positions, geno_position[1])
-        end
-    end
-    returnarray = []
-    for indiv in x.ind
-        tmp = []
-        for posit in positions
-            if length(tmp) == 0
-                tmp = x.genotypes[indiv][posit]
-            else
-                tmp = hcat(tmp, x.genotypes[indiv][posit])
-
-            end
-        end
-        if length(returnarray) == 0
-            returnarray = tmp
+function genotypes(x::PopObj; inds::Union{String, Array, Nothing}= nothing)
+    df = x.genotypes |> DataFrame ;
+    insertcols!(df, 1, :ind => x.ind) ;
+    insertcols!(df, 2, :population => categorical(x.popid))
+    if inds != nothing
+        if typeof(inds) == String
+            inds ∉ x.ind && error("individual $inds not found in PopObj")
+            return df[df.ind .== inds, :]
         else
-            returnarray = cat(returnarray,tmp, dims = 1)
+            tmp = df[df.ind .== inds[1], :]
+            for ind in inds[2:end]
+                ind ∉ x.ind && println("NOTICE: individual \"$ind\" not found in PopObj!")
+                tmp = vcat(tmp, df[df.ind .== ind, :])
+            end
+            println()
+            return tmp
         end
+    else
+        return df
     end
-    hcat(x.ind, returnarray)
 end
 
+
+#### Find missing ####
 
 """
     Base.missing(x::PopObj; plot::Bool = false)
@@ -180,21 +199,22 @@ Example:
 `missing_ind,missing_loc = missing(aardvark)`
 """
 function Base.missing(x::PopObj)
-    # by individuals
+    df = x.genotypes |> DataFrame
+    insertcols!(df, 1, :ind => x.ind)
+    # missing per individual
     nmissing = []
-    misslociarray = []
-    for each in x.ind
-        missloci = x.loci[findall(i->i==(0,0), x.genotypes[each])]
-        push!(nmissing, length(missloci))
-        if length(missloci) == 0
-            push!(misslociarray, [])
-        else
-            push!(misslociarray, missloci)
-        end
+    missing_array = []
+    for each in 1:length(df[:,1])
+        miss_idx = findall(i -> i == (0,0), df[each,:])
+        push!(nmissing, miss_idx |> length)
+        push!(missing_array, String.(miss_idx))
     end
-    ind_df = DataFrame(ind = x.ind, population = string.(x.popid),  nmissing = nmissing, loci = misslociarray)
-
-    # count missing loci
+    ind_df = DataFrame(ind = x.ind,
+                       population = string.(x.popid),
+                       nmissing = nmissing,
+                       loci = missing_array
+                       )
+    # missing per locus
     d = Dict()
     for b in ind_df[!, :4]
         for c in b
@@ -216,45 +236,11 @@ function Base.missing(x::PopObj)
     end
 
     #convert to DF and sort
-    loci_df = hcat(x.loci, countarray) |> DataFrame ; sort!(loci_df, 2)
+    loci_df = DataFrame(locus = x.loci, nmissing = countarray)
     return (ind_df, loci_df)
 end
 
-
-"""
-    remove!(x::PopObj, inds::Union{Array{String,1}})
-Removes selected individuals from a `PopObj`.
-
-Examples:
-
-`remove_ind!(sunflowers, "west_011")`
-
-`remove_ind!(sunflowers, ["west_011", "west_003", "east_051"])`
-"""
-function remove_ind!(x::PopObj, inds::Union{String,Array{String,1}})
-    # get individuals indices
-    if typeof(inds) == String
-        inds ∉ x.ind && error("individual \"$inds\" not found")
-        idx = findfirst(i -> i == inds, x.ind)
-    else
-        idx = []
-        for each in inds
-            each ∉ x.ind && error("individual \"$each\" not found")
-            push!(idx, findfirst(i -> i == each, x.ind) )
-        end
-    end
-    deleteat!(x.ind, idx)  # delete name(s)
-    deleteat!(x.popid, idx)    # delete popid(s)
-    if length(x.longitude) != 0 && length(x.latitude) != 0
-        deleteat!(x.longitude, idx)    # delete xloc(s)
-        deleteat!(x.longitude, idx)    # delete yloc(s)
-    end
-    for each in inds
-        delete!(x.genotypes, each)  # delete genotypes
-    end
-    return x
-end
-
+##### Removal #####
 
 """
     remove_loci!(x::PopObj; loci::Union{String, Array{String,1}})
@@ -266,21 +252,64 @@ Examples:
 
 `remove_loci!(tulips, ["north_011", "north_003", "south_051"])`
 """
-function remove_loci!(x::PopObj, loci::Union{String, Array{String,1}})
-    # get loci indices
+function remove_loci!(x::PopObj, loci::Union{String,Array{String,1}})
+    # get individuals indices
     if typeof(loci) == String
-        loci ∉ x.loci && error("locus \"$loci\" not found")
+        loci ∉ x.loci && error("Locus \"$loci\" not found")
         idx = findfirst(i -> i == loci, x.loci)
     else
         idx = []
-        for locus in loci
-            locus ∉ x.loci && error("locus \"$locus\" not found")
-            push!(idx, findfirst(i -> i == locus, x.loci) )
+        for each in loci
+            if each ∉ x.loci
+                println("NOTICE: locus \"$each\" not found")
+                continue
+            end
+            push!(idx, findfirst(i -> i == each, x.loci) )
         end
+        println()
     end
-    deleteat!(x.loci, idx)  # delete loci names from list
-    # remove genotypes of loci from all individuals
-    for each in x.ind
+    deleteat!(x.loci, idx) # remove locus names
+    for each in loci
+        delete!(x.genotypes, each)  # remove genotypes
+    end
+    return x
+end
+
+
+"""
+    remove_inds!(x::PopObj, inds::Union{Array{String,1}})
+Removes selected individuals from a `PopObj`.
+
+Examples:
+
+`remove_ind!(sunflowers, "west_011")`
+
+`remove_ind!(sunflowers, ["west_011", "west_003", "east_051"])`
+"""
+function remove_inds!(x::PopObj, inds::Union{String, Array{String,1}})
+    # get inds indices
+    if typeof(inds) == String
+        inds ∉ x.ind && error("ind \"$inds\" not found")
+        idx = findfirst(i -> i == inds, x.ind)
+    else
+        idx = []
+        for ind in inds
+            if ind ∉ x.ind
+                println("NOTICE: ind \"$ind\" not found!")
+                continue
+            end
+            push!(idx, findfirst(i -> i == ind, x.ind) )
+        end
+        println()
+    end
+    deleteat!(x.ind, idx)  # remove name(s)
+    deleteat!(x.popid, idx)    # remove popid(s)
+    if length(x.longitude) != 0 && length(x.latitude) != 0
+        deleteat!(x.longitude, idx)    # remove xloc(s)
+        deleteat!(x.longitude, idx)    # remove yloc(s)
+    end
+    # remove inds from all loci genotypes
+    for each in x.loci
         deleteat!(x.genotypes[each], idx)
     end
     return x

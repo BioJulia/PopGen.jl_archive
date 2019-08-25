@@ -28,46 +28,56 @@ function plot_missing(x::PopObj; color = false)
             )
             for (y, mc, name, text) in zip(ys, colors, unique(by_ind[!, :population]), texts)]
 
-    bylocus = bar(;x = by_loci[!, :1],
+    #=bylocus = bar(;x = by_loci[!, :1],
                   y = by_loci[!, :2],
                   marker=attr(color="rgb(146,134,184)"),
                   name = "# missing data",
                   )
+    =#
+    loci_hist = histogram(x = by_loci[!, :nmissing],
+                          marker_color = "rgb(217, 217, 217)",
+                          name = "",
+                          text = "loci",
+                          showlegend = false)
 
     layout_ind = Layout(title = "Number of missing loci per population",
                     hovermode = "closest",
                     yaxis = attr(title = "# missing loci", zeroline = false),
                     xaxis = attr(title = "Population", zeroline = false)
                     )
-    layout_loci = Layout(title = "Missing data per locus",
+    #=layout_loci = Layout(title = "Missing data per locus",
                     hovermode = "closest",
                     bargap = 0.05,
                     yaxis = attr(title = "# missing", zeroline = false),
                     xaxis = attr(title = "loci", zeroline = false, showticklabels = false),
                     )
+    =#
+    layout_hist = Layout(title = "Distribution of Locus Missingness",
+                         xaxis = attr(title = "# of times locus missing", zeroline = false),
+                         yaxis = attr(title = "# of loci", zeroline = false)
+                         )
     ind_plot =  plot(byind, layout_ind)
-    loci_plot = plot(bylocus, layout_loci)
+    loci_plot = plot(loci_hist, layout_hist)
 
     return [ind_plot loci_plot]
 end
 
 
 """
-    plot_locations(x::PopObj; region::String = "world", projection::String = "mercator")
+    plot_locations(x::PopObj; region::String = "world", projection::String = "orthographic")
 
-Returns a simple low resolution interactive scatterplot of the individuals in a
-`PopObj`. Default `region` and `projection` are "world" and "mercator", respectively.
+Returns a simple lower resolution interactive scatterplot of the individuals in a
+`PopObj`. Default `region` and `projection` are "world" and "orthographic",
+respectively. If a specific region is set, the plot will default to "mercator"
+projection unless `projection =` is used to specify a different one.
 
-Example:
-
+Example:\n
 `plot_locations(manatees, region = "usa", projection = "albers usa")`
 
-[regions]
-
+[regions]\n
 "usa","europe", "asia", "africa", "north america", "south america"
 
-[projections]
-
+[projections]\n
 "equirectangular", "mercator", "orthographic", "natural earth",
 "kavrayskiy7", "miller", "robinson", "eckert4",
 "azimuthal equal area", "azimuthal equidistant",
@@ -76,7 +86,7 @@ Example:
 "transverse mercator", "albers usa", "winkel tripel",
 "aitoff", "sinusoidal"
 """
-function plot_locations(x::PopObj; region::String = "world", projection::String = "mercator")
+function plot_locations(x::PopObj; region::String = "world", projection::String = "orthographic")
     if projection ∉ ["equirectangular", "mercator", "orthographic", "natural earth",
                     "kavrayskiy7", "miller", "robinson", "eckert4",
                     "azimuthal equal area", "azimuthal equidistant",
@@ -86,30 +96,19 @@ function plot_locations(x::PopObj; region::String = "world", projection::String 
                     "aitoff", "sinusoidal"]
         error("Projection not recognized. Please see the help doc for full list of projection options")
     end
-    locs = scattergeo(lat=x.latitude,
-                       lon=x.longitude,
-                       hoverinfo="text",
-                       text=["$i: $j" for (i,j) in zip(x.popid, x.ind)],
-                       marker_line_color="black", marker_line_width=2
-                       )
-    if region == "world"
-        geo = attr(scope = region,
-                   projection_type = projection,
-                   showcoastlines = false,
-                   showcountries = true,
-                   countrywidth = 0.75,
-                   countrycolor = "rgb(255,255,255)",
-                   subunitcolor = "rgb(255,255,255)",
-                   showland = true,
-                   landcolor = "rgb(217, 217, 217)",
-                   )
-   elseif region ∈ ["usa","europe", "asia", "africa", "north america", "south america"]
+    df = locations(x)
+    popnum = length(df[!, :population] |> unique)
+    colors = ["hsl($i, 50%, 50%)" for i in range(0, stop=300, length=popnum)]
+    df_split = groupby(df, :population)
+    map_scatter = [scattergeo(lat=df_split[i][!, :latitude],
+                       lon=df_split[i][!, :longitude],
+                       marker_line_color="rgb(62,90,112)", marker_line_width=1,
+                       marker_color = colors[i],
+                       name = df_split[i][!, :population][1],
+                       text = df_split[i][!, :ind]
+                       ) for i in 1:popnum]
+   if region == "world"
        geo = attr(scope = region,
-                  showlakes = true,
-                  lakecolor = "#a5a5a5",
-                  showrivers = true,
-                  rivercolor = "#a5a5a5",
-                  showsubunits = true,
                   projection_type = projection,
                   showcoastlines = false,
                   showcountries = true,
@@ -119,9 +118,30 @@ function plot_locations(x::PopObj; region::String = "world", projection::String 
                   showland = true,
                   landcolor = "rgb(217, 217, 217)",
                   )
-    else
-        error("Leave \"region =\" empty or use one of: usa, europe, asia, africa, north america, south america")
-    end
-   layout = Layout(;title="Sample locations", showlegend=false, geo=geo)
-   plot(locs, layout)
+   elseif lowercase(region) ∈ ["usa","europe", "asia", "africa", "north america", "south america"]
+      if projection == "orthographic"
+          proj = "mercator"
+      else
+          proj = projection
+      end
+      geo = attr(scope = lowercase(region),
+                 showlakes = true,
+                 lakecolor = "#a5a5a5",
+                 showrivers = true,
+                 rivercolor = "#a5a5a5",
+                 showsubunits = true,
+                 projection_type = proj,
+                 showcoastlines = false,
+                 showcountries = true,
+                 countrywidth = 0.75,
+                 countrycolor = "rgb(255,255,255)",
+                 subunitcolor = "rgb(255,255,255)",
+                 showland = true,
+                 landcolor = "rgb(217, 217, 217)",
+                 )
+   else
+       error("Leave \"region =\" empty or use one of: usa, europe, asia, africa, north america, south america")
+   end
+    layout = Layout(;title="Sample locations", showlegend=true, geo=geo)
+    plot(map_scatter, layout)
 end
