@@ -9,7 +9,7 @@ There are two easy ways to edit this documentation:
 We have GitHub Actions configured to auto-deploy the documentation site when changes are pushed to the `documentation` branch. That means as long as we edit the source content, building and deployment will be handled automatically!
 
 ## 2. The More Technical Way - Clone locally
-1. Clone the respository onto your system with `git clone https://github.com/pdimens/PopGen.jl.git` and switch to the `documentation` branch.
+1. Clone the respository onto your system with `git clone https://github.com/BioJulia/PopGen.jl.git` and switch to the `documentation` branch.
 2. Install the correct NodeJS modules by navigating to the repository folder and using the command `yarn install`, which will parse the `package.json` file and install all the necessary NodeJS modules into the directory.
     1. You will need NodeJS and Yarn installed on your system for this to work.
 3. Use `yarn start` to start a local live-reloading development server in a browser window. Most changes are reflected live without having to restart the server.
