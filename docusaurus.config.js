@@ -3,10 +3,10 @@ const rehypeKatex = require("rehype-katex");
 module.exports = {
   title: 'PopGen.jl',
   tagline: 'A package to perform a suite of population genetics analyses, written in Julia',
-  url: 'https://pdimens.github.io',
+  url: 'https://biojulia.github.io',
   baseUrl: '/PopGen.jl/',
   favicon: 'img/favicon.ico',
-  organizationName: 'pdimens', // Usually your GitHub org/user name.
+  organizationName: 'BioJulia', // Usually your GitHub org/user name.
   projectName: 'PopGen.jl', // Usually your repo name.
   themeConfig: {
     prism: {
