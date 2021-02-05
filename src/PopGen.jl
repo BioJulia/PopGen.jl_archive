@@ -9,7 +9,7 @@ Motivational(?) quote: $(motivational_quote())
 ## Load in data
 - `read_from(filename; kwargs...)`
 - `genepop(infile; kwargs...)`  or similar file-specific importer
-- use available `gulfsharks()` or `nancycats()` datasets
+- use available `@gulfsharks` or `@nancycats` datasets
 
 ## Explore PopData
 - `populations(PopData)` to view population information
@@ -39,8 +39,7 @@ module PopGen
 using CSV, Distributions, DataFrames, PooledArrays, StaticArrays
 using FileIO, JLD2, Requires, ProgressMeter
 using MultipleTesting, Random, StatsBase
-#using Convex,ECOS
-# using LinearAlgebra
+using RandomNumbers.Xorshifts
 
 
 #   o O       o O       o O       o O       o O
@@ -58,7 +57,10 @@ include("io/Genepop.jl")
 include("io/Read.jl")
 include("io/Structure.jl")
 @init @require GeneticVariation="9bc6ac9d-e6b2-5f70-b0a8-242a01662520" begin
-    @require GZip="92fee26a-97fe-5a0c-ad85-20a5f3185b63" include("io/VariantCall.jl")
+    include("io/VariantCall.jl")
+end
+@init @require GeneticVariation="9bc6ac9d-e6b2-5f70-b0a8-242a01662520" begin
+    @require GZip="92fee26a-97fe-5a0c-ad85-20a5f3185b63" include("io/VariantCallGz.jl")
 end
 # example data
 include("io/Datasets.jl")
@@ -77,6 +79,7 @@ include("SummaryInfo.jl")
 include("HardyWeinberg.jl")
 include("Relatedness/PairwiseRelatedness.jl")
 include("Relatedness/RelatednessMoments.jl")
+include("Relatedness/RelatednessPostHocs.jl")
 #include(PlotRecipes.jl)  # not yet ready
 
 end # module PopGen
