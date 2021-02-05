@@ -15,21 +15,32 @@ function adjacency_matrix(data::PopData)
     return out_vec
 end
 
-#TODO change location in API docs and rename allele_pool
+#TODO change location in API docs and rename allele_pool?
 #TODO replace alleles with universal Symbol type?
 """
-    alleles(locus::T; miss::Bool = false) where T<:GenoArray
-Return an array of all the non-missing alleles of a locus. Use
-`miss = true` to include missing values.
+    alleles(locus::T) where T<:GenoArray
+Return an array of all the non-missing alleles of a locus.
 """
-@inline function alleles(locus::T; miss::Bool = false) where T<:GenoArray
+@inline function alleles(locus::T) where T<:GenoArray
     if all(ismissing.(locus))
         return Vector{Union{Missing, eltype(locus).b.types[1]}}(undef, length(locus))
     end
     alle_out = Base.Iterators.flatten(skipmissing(locus)) |> collect
-    alle_out = Vector{Union{Missing, eltype(alle_out)}}(alle_out)
+end
+
+"""
+    alleles(locus::T, miss::Bool = false) where T<:GenoArray
+Return an array of all the non-missing alleles of a locus. Use the second positional
+argument as `true` to include missing values.
+"""
+@inline function alleles(locus::T, miss::Bool) where T<:GenoArray
+    int_type = eltype(locus).b.types[1]
+    if all(ismissing.(locus))
+        return Vector{Union{Missing, int_type}}(undef, length(locus))
+    end
+    alle_out = Vector{Union{Missing, int_type}}(Base.Iterators.flatten(skipmissing(locus)) |> collect)
     if miss == true
-        append!(alle_out, locus[locus.=== missing])
+        append!(alle_out, locus[locus .=== missing])
     end
     return alle_out
 end
@@ -509,4 +520,52 @@ function motivational_quote()
     "\"Always remember that you are unique – just like everybody else.\" Unknown"
     ]
     return quotes[rand(1:length(quotes))]
+end
+
+#TODO add to docs API
+"""
+    generate_meta(data::DataFrame)
+Given a genotype DataFrame formatted like `PopData.loci`, generates a corresponding
+`meta` DataFrame. In other words, it creates the `.meta` part of `PopData` from the `.loci` part.
+
+**Example**:
+```
+julia> cats = @nancycats ;
+
+julia> cats_nometa = cats.loci ;
+
+julia> cats_meta = generate_meta(cats_nometa)
+237×5 DataFrame
+ Row │ name    population  ploidy  longitude  latitude 
+     │ String  String      Int8    Float32?   Float32? 
+─────┼─────────────────────────────────────────────────
+   1 │ N215    1                2   missing   missing  
+   2 │ N216    1                2   missing   missing  
+   3 │ N217    1                2   missing   missing  
+   4 │ N218    1                2   missing   missing  
+   5 │ N219    1                2   missing   missing  
+   6 │ N220    1                2   missing   missing  
+   7 │ N221    1                2   missing   missing  
+  ⋮  │   ⋮         ⋮         ⋮         ⋮         ⋮
+ 232 │ N295    17               2   missing   missing  
+ 233 │ N296    17               2   missing   missing  
+ 234 │ N297    17               2   missing   missing  
+ 235 │ N281    17               2   missing   missing  
+ 236 │ N289    17               2   missing   missing  
+ 237 │ N290    17               2   missing   missing  
+                                       224 rows omitted
+```
+"""
+function generate_meta(data::DataFrame)
+    grp = groupby(data, :name)
+    nms = map(z -> z.name, keys(grp))
+    pops = map(z -> first(z.population), grp)
+    ploids = map(z -> find_ploidy(z.genotype), grp)
+    DataFrame(
+        :name => nms,
+        :population => pops,
+        :ploidy => ploids,
+        :longitude => Vector{Union{Missing, Float32}}(undef, (length(nms))),
+        :latitude => Vector{Union{Missing, Float32}}(undef, (length(nms)))
+    )
 end

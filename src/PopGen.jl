@@ -40,8 +40,6 @@ using CSV, Distributions, DataFrames, PooledArrays, StaticArrays
 using FileIO, JLD2, Requires, ProgressMeter
 using MultipleTesting, Random, StatsBase
 using RandomNumbers.Xorshifts
-#using Convex,ECOS
-# using LinearAlgebra
 
 
 #   o O       o O       o O       o O       o O
@@ -59,7 +57,10 @@ include("io/Genepop.jl")
 include("io/Read.jl")
 include("io/Structure.jl")
 @init @require GeneticVariation="9bc6ac9d-e6b2-5f70-b0a8-242a01662520" begin
-    @require GZip="92fee26a-97fe-5a0c-ad85-20a5f3185b63" include("io/VariantCall.jl")
+    include("io/VariantCall.jl")
+end
+@init @require GeneticVariation="9bc6ac9d-e6b2-5f70-b0a8-242a01662520" begin
+    @require GZip="92fee26a-97fe-5a0c-ad85-20a5f3185b63" include("io/VariantCallGz.jl")
 end
 # example data
 include("io/Datasets.jl")
